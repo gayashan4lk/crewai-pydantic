@@ -1,62 +1,105 @@
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
+from crewai_tools import SerperDevTool
+from pydantic import BaseModel, Field
+from typing import List, Dict
+from datetime import datetime
 
-# If you want to run a snippet of code before or after the crew starts, 
-# you can use the @before_kickoff and @after_kickoff decorators
-# https://docs.crewai.com/concepts/crews#example-crew-class-with-decorators
+class ResearchPoint(BaseModel):
+    topic: str = Field(description="The main topic or area being discussed")
+    findings: str = Field(description="The key findings or insights about this topic")
+    relevance: str = Field(description="Why this finding is relevant or important")
+    sources: List[Dict[str, str]] = Field(
+        description="Sources with title and URL for each finding",
+        default_factory=list
+    )
+
+class ResearchOutput(BaseModel):
+    research_points: List[ResearchPoint] = Field(description="List of research findings")
+    summary: str = Field(description="Brief summary of overall findings")
+
+class ExecutiveReportSection(BaseModel):
+    # section_emoji: str = Field(description="Section emoji (e.g., 🔍, 📊, 🎯)")
+    section_title: str = Field(description="Section title")
+    section_content: str = Field(description="Main content of the section")
+    key_insights: List[str] = Field(description="Key insights from this section")
+    recommendations: List[str] = Field(
+        default_factory=list,
+        description="Optional recommendations based on findings"
+    )
+    sources: List[Dict[str, str]] = Field(
+        description="Sources with title and URL for this section",
+        default_factory=list
+    )
+
+class ExecutiveReport(BaseModel):
+    report_title: str = Field(description="Title of the report")
+    generation_date: str = Field(description="Report generation date")
+    executive_summary: str = Field(description="A concise executive summary")
+    key_findings: List[Dict[str, str]] = Field(
+        description="List of key findings with their sources",
+        default_factory=list
+    )
+    report_sections: List[ExecutiveReportSection] = Field(
+        description="Detailed report sections"
+    )
+    next_steps: List[str] = Field(description="Recommended next steps")
+    sources: List[Dict[str, str]] = Field(
+        description="All sources used in the report",
+        default_factory=list
+    )
 
 @CrewBase
 class MyCrew():
-	"""MyCrew crew"""
+    """LatestAiDevelopment crew"""
 
-	# Learn more about YAML configuration files here:
-	# Agents: https://docs.crewai.com/concepts/agents#yaml-configuration-recommended
-	# Tasks: https://docs.crewai.com/concepts/tasks#yaml-configuration-recommended
-	agents_config = 'config/agents.yaml'
-	tasks_config = 'config/tasks.yaml'
+    @agent
+    def researcher(self) -> Agent:
+        return Agent(
+            config=self.agents_config['researcher'],
+            verbose=True,
+            tools=[SerperDevTool()],
+        )
 
-	# If you would like to add tools to your agents, you can learn more about it here:
-	# https://docs.crewai.com/concepts/agents#agent-tools
-	@agent
-	def researcher(self) -> Agent:
-		return Agent(
-			config=self.agents_config['researcher'],
-			verbose=True
-		)
+    @agent
+    def reporting_analyst(self) -> Agent:
+        return Agent(
+            config=self.agents_config['reporting_analyst'],
+            verbose=True
+        )
+    @agent
+    def formatter(self) -> Agent:
+        return Agent(
+            config=self.agents_config['formatter'],
+            verbose=True
+        )
 
-	@agent
-	def reporting_analyst(self) -> Agent:
-		return Agent(
-			config=self.agents_config['reporting_analyst'],
-			verbose=True
-		)
+    @task
+    def research_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['research_task'],
+            output_json=ResearchOutput
+        )
 
-	# To learn more about structured task outputs, 
-	# task dependencies, and task callbacks, check out the documentation:
-	# https://docs.crewai.com/concepts/tasks#overview-of-a-task
-	@task
-	def research_task(self) -> Task:
-		return Task(
-			config=self.tasks_config['research_task'],
-		)
+    @task
+    def reporting_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['reporting_task'],
+            output_pydantic=ExecutiveReport
+        )
 
-	@task
-	def reporting_task(self) -> Task:
-		return Task(
-			config=self.tasks_config['reporting_task'],
-			output_file='report.md'
-		)
-
-	@crew
-	def crew(self) -> Crew:
-		"""Creates the MyCrew crew"""
-		# To learn how to add knowledge sources to your crew, check out the documentation:
-		# https://docs.crewai.com/concepts/knowledge#what-is-knowledge
-
-		return Crew(
-			agents=self.agents, # Automatically created by the @agent decorator
-			tasks=self.tasks, # Automatically created by the @task decorator
-			process=Process.sequential,
-			verbose=True,
-			# process=Process.hierarchical, # In case you wanna use that instead https://docs.crewai.com/how-to/Hierarchical/
-		)
+    @task
+    def formatting_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['formatting_task']
+        )
+		
+    @crew
+    def crew(self) -> Crew:
+        """Creates the MyCrew"""
+        return Crew(
+            agents=self.agents, # Automatically created by the @agent decorator
+            tasks=self.tasks, # Automatically created by the @task decorator
+            process=Process.sequential,
+            verbose=True,
+        )

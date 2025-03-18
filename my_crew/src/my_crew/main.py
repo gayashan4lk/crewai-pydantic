@@ -18,8 +18,8 @@ def run():
     Run the crew.
     """
     inputs = {
-        'topic': 'AI LLMs',
-        'current_year': str(datetime.now().year)
+        'topic': 'AI Agents in 2025',
+        'date': datetime.now().strftime('%Y-%m-%d')
     }
     
     try:
@@ -33,7 +33,8 @@ def train():
     Train the crew for a given number of iterations.
     """
     inputs = {
-        "topic": "AI LLMs"
+        "topic": "AI LLMs",
+        'current_year': str(datetime.now().year)
     }
     try:
         MyCrew().crew().train(n_iterations=int(sys.argv[1]), filename=sys.argv[2], inputs=inputs)
